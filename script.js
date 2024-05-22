@@ -1,118 +1,90 @@
-function GameBoard(){
-    let board = [];
-    for(let i = 0; i < 3; i++){
-        board.push(new Array(3).fill(null))
-    }
+const X_CLASS = 'x';
+const O_CLASS = 'o';
+const WINNING_COMBOS = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+]
+const winningMessageTextElement = document.querySelector('[data-winning-message-text]')
+const cellElements = document.querySelectorAll('[data-cell]');
+const board = document.getElementById('board')
+const winningMessageElement = document.getElementById('winningMessage');
+const restartButton = document.getElementById('restartButton')
+let oTurn;
+startGame();
 
-    const getBoard = function(){
-        return board;
-    }
-
-    const displayBoard = function(){
-        for(let i = 0; i < board.length; i++){
-            console.log(board[i].map(cell => (cell === null ? '-' : cell)).join(' '));
-        }
-    }
-
-    const setCell = function( row, col, value){
-        if(row >= 0 && row < 3 && col >= 0 && col< 3){
-            board[row][col] = value;
-            return true;
-        }else{
-            console.error('Occupied cell cooordinate');
-            return false;
-        }
-    }
-
-    const resetBoard = function (){
-        for(let i = 0; i < 3; i++){
-            board[i].fill(null)
-        }
-    }
-
-    return{getBoard, displayBoard, setCell, resetBoard}
+function startGame() {
+    oTurn = false;
+    cellElements.forEach(cell => {
+        cell.classList.remove(X_CLASS)
+        cell.classList.remove(O_CLASS)
+        cell.removeEventListener('click', handleClick)
+        cell.addEventListener('click', handleClick, { once : true})
+    })
+    setBoardHoverClass()
+    winningMessageElement.classList.remove('show');
 }
 
-function TicTacToe(){
-    let gameBoard = GameBoard();
-    let currentPlayer = 'X';
-    let moves = 0;
-    const winningCombos = [
-        [[0, 0], [0, 1], [0, 2]],
-        [[1, 0], [1, 1], [1, 2]],
-        [[2, 0], [2, 1], [2, 2]],
-        [[0, 0], [1, 0], [2, 0]],
-        [[0, 1], [1, 1], [2, 1]],
-        [[0, 2], [1, 2], [2, 2]],
-        [[0, 0], [1, 1], [2, 2]],
-        [[0, 2], [1, 1], [2, 0]]
-    ];
+restartButton.addEventListener('click', startGame)
 
-    const checkWin = function(){
-        for(let combo of winningCombos) {
-            const [a, b, c] = combo;
-            if(gameBoard.getBoard()[a[0]][a[1]] &&
-               gameBoard.getBoard()[a[0]][a[1]] === gameBoard.getBoard()[b[0]][b[1]] &&
-               gameBoard.getBoard()[a[0]][a[1]] === gameBoard.getBoard()[c[0]][c[1]]) {
-               return gameBoard.getBoard()[a[0]][a[1]]; 
-            }
-        }
-        return null;
+
+function handleClick(event){
+    const cell = event.target;
+    const currentClass = oTurn ? O_CLASS : X_CLASS
+    placeMark(cell, currentClass);
+    if (checkWin(currentClass)) {
+        endGame(false)
+    } else if (isDraw()) {
+        endGame(true)
+    } else {
+        switchTurn();
+        setBoardHoverClass();
     }
-
-    function makeMove(row, col) {
-        if(gameBoard.setCell(row, col, currentPlayer)) {
-            moves++;
-            let winner = checkWin();
-            if(winner) {
-                console.log(`Player ${winner} wins!`);
-                gameBoard.displayBoard();
-                return true;
-            }else if (moves === 9) {
-                console.log('The game is a draw.');
-                return true;
-            }
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            return false;
-        }
-        return false;
-    }
-
-    function computerMove() {
-        let emptyCells = [];
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (gameBoard.getBoard()[i][j] === null) {
-                    emptyCells.push([i, j]);
-                }
-            }
-        }
-        if (emptyCells.length > 0) {
-            let[row, col] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-            makeMove(row, col);
-        }
-    }
-
-    function playerMove(row, col) {
-        if (makeMove(row, col)) return;
-        setTimeout(computerMove, 500);
-    }
-
-    return {
-        gameBoard: gameBoard,
-        playerMove: playerMove,
-        currentPlayer: function() {
-            return currentPlayer;
-        },
-        resetGame: function() {
-            gameBoard.resetBoard();
-            currentPlayer = 'X';
-            moves = 0;
-        }
-    };
 }
 
-let game = TicTacToe();
+function endGame(draw) {
+    if (draw) {
+        winningMessageTextElement.textContent = "It's a tie"
+    } else{
+        winningMessageTextElement.textContent = `${oTurn ? "O's" : "X's"} Wins!!`
+    }
+    winningMessageElement.classList.add('show')
+}
 
-game.playerMove(0, 0);
-game.gameBoard.displayBoard()
+function isDraw() {
+    return [...cellElements].every(cell => {
+        return cell.classList.contains(X_CLASS) || 
+        cell.classList.contains(O_CLASS)
+    })
+}
+
+function placeMark(cell, currentClass){
+    cell.classList.add(currentClass)
+}
+
+function switchTurn() {
+    oTurn = !oTurn;
+}
+
+function setBoardHoverClass() {
+    board.classList.remove(X_CLASS);
+    board.classList.remove(O_CLASS);
+    if(oTurn) {
+        board.classList.add(O_CLASS);
+    } else {
+        board.classList.add(X_CLASS);
+    }    
+}
+
+function checkWin(currentClass) {
+    return WINNING_COMBOS.some(combination => {
+        return combination.every(index => {
+            return cellElements[index].classList.contains(currentClass)
+        })
+    })
+}
